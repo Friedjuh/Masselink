@@ -1,0 +1,18 @@
+{
+  "name": "Masselink Facturen",
+  "short_name": "Masselink",
+  "description": "Gratis iPhone webapp voor klanten, projecten en facturen.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#223b52",
+  "lang": "nl-NL",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
