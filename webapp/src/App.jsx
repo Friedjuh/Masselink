@@ -447,20 +447,34 @@ async function createInvoicePdf(invoice, customer, project, settings) {
   doc.text(formatDisplayDate(invoice.invoiceDate), 190, 43, { align: 'right' })
 
   const infoTop = 54
-  const infoHeight = 68
   const infoRowHeight = 8.5
+  const workDescriptionWidth = 104
+  const workDescriptionText = invoice.workDescription || '-'
+  const workDescriptionLines = doc.splitTextToSize(workDescriptionText, workDescriptionWidth)
+  const workDescriptionLineHeight = 5
+  const workDescriptionPaddingTop = 4
+  const workDescriptionPaddingBottom = 2
+  const workDescriptionHeight = Math.max(
+    infoRowHeight,
+    workDescriptionPaddingTop +
+      workDescriptionLines.length * workDescriptionLineHeight +
+      workDescriptionPaddingBottom,
+  )
+  const infoHeight = infoRowHeight * 7 + workDescriptionHeight
   const infoWidth = 148
   const infoRight = 16 + infoWidth
   doc.rect(16, infoTop, infoWidth, infoHeight)
   doc.line(52, infoTop, 52, infoTop + infoHeight)
-  for (let lineIndex = 1; lineIndex < 8; lineIndex += 1) {
+  for (let lineIndex = 1; lineIndex < 7; lineIndex += 1) {
     doc.line(52, infoTop + lineIndex * infoRowHeight, infoRight, infoTop + lineIndex * infoRowHeight)
   }
+  const workDescriptionTop = infoTop + infoRowHeight * 7
+  doc.line(52, workDescriptionTop, infoRight, workDescriptionTop)
 
   doc.text('Week:', 19, 61)
   doc.text('Project(en):', 19, 69.5)
   doc.text('Monteur:', 19, 112)
-  doc.text('Werkzaamheden:', 19, 120.5)
+  doc.text('Werkzaamheden:', 19, workDescriptionTop + 7)
 
   doc.text(invoice.week || '-', 56, 61)
   for (let index = 0; index < 5; index += 1) {
@@ -474,9 +488,11 @@ async function createInvoicePdf(invoice, customer, project, settings) {
     }
   }
   doc.text(invoice.mechanic || DEFAULT_MECHANIC, 56, 112)
-  doc.text(invoice.workDescription || '-', 56, 120.5)
+  workDescriptionLines.forEach((line, index) => {
+    doc.text(line, 56, workDescriptionTop + workDescriptionPaddingTop + 3 + index * workDescriptionLineHeight)
+  })
 
-  const tableTop = 130
+  const tableTop = infoTop + infoHeight + 8
   const tableLeft = 16
   const col1 = 87
   const col2 = 31
