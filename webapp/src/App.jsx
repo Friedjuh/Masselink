@@ -555,22 +555,26 @@ async function createInvoicePdf(invoice, customer, project, settings) {
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
+  const pageHeight = doc.internal.pageSize.getHeight()
   const footerStart = totalTop + 28
   doc.text(settings.footerNote, 16, footerStart, { maxWidth: 174 })
   doc.text('Betalingstermijn uiterlijk 30 dagen na factuurdatum', 16, footerStart + 11)
   doc.text('Reclamaties 10 dagen na factuurdatum', 16, footerStart + 18)
+  const footerBottomBaseline = Math.max(footerStart + 64, pageHeight - 10)
+  const footerRightTop = footerBottomBaseline - 37
+  const footerLeftTop = footerBottomBaseline - 31
 
   if (bottomLogo) {
-    doc.addImage(bottomLogo, 'PNG', 14, footerStart + 27, 48, 14)
+    doc.addImage(bottomLogo, 'PNG', 14, footerLeftTop, 48, 14)
   }
 
-  doc.text(settings.addressLine1, 16, footerStart + 46)
-  doc.text('IBAN: ' + settings.iban, 118, footerStart + 46)
-  doc.text(settings.postalCode + ' ' + settings.city, 16, footerStart + 52)
-  doc.text('KvK nummer: ' + settings.kvkNumber, 118, footerStart + 52)
-  doc.text('Tel: ' + settings.phone, 16, footerStart + 58)
-  doc.text('BTW nummer: ' + settings.vatNumber, 118, footerStart + 58)
-  doc.text('E-mail: ' + settings.email, 118, footerStart + 64)
+  doc.text(settings.addressLine1, 16, footerLeftTop + 19)
+  doc.text(settings.postalCode + ' ' + settings.city, 16, footerLeftTop + 25)
+  doc.text('Tel: ' + settings.phone, 16, footerLeftTop + 31)
+  doc.text('IBAN: ' + settings.iban, 118, footerRightTop + 19)
+  doc.text('KvK nummer: ' + settings.kvkNumber, 118, footerRightTop + 25)
+  doc.text('BTW nummer: ' + settings.vatNumber, 118, footerRightTop + 31)
+  doc.text('E-mail: ' + settings.email, 118, footerRightTop + 37)
 
   return doc
 }
@@ -1286,12 +1290,14 @@ function App() {
     }
   }
 
-  function resetInvoiceForm() {
+  function resetInvoiceForm(statusText = 'Nieuwe factuur gestart.') {
     const nextInvoice = createEmptyInvoice(settings)
     setInvoiceForm(nextInvoice)
     setProjectPickerId('')
     draftSnapshotRef.current = ''
-    setStatus('Nieuwe factuur gestart.')
+    if (statusText) {
+      setStatus(statusText)
+    }
   }
 
   async function saveSettings() {
@@ -1502,15 +1508,15 @@ function App() {
       const blob = doc.output('blob')
       downloadBlob(blob, createPdfFilename(invoiceForm))
       if (saveResult?.missingTable) {
-        setStatus(
+        resetInvoiceForm(
           'PDF gedownload. De tabel invoices ontbreekt nog, dus deze factuur staat nog niet in de historie.',
         )
       } else if (saveResult?.existed && saveResult.snapshotChanged) {
-        setStatus('PDF gedownload. Bestaande factuur in historie bijgewerkt en op verzonden gezet.')
+        resetInvoiceForm('PDF gedownload. Bestaande factuur in historie bijgewerkt en op verzonden gezet.')
       } else if (saveResult?.existed) {
-        setStatus('PDF gedownload. Bestaande factuur in historie bijgewerkt.')
+        resetInvoiceForm('PDF gedownload. Bestaande factuur in historie bijgewerkt.')
       } else {
-        setStatus('PDF gedownload en aan factuurhistorie toegevoegd als verzonden.')
+        resetInvoiceForm('PDF gedownload en aan factuurhistorie toegevoegd als verzonden.')
       }
     } catch (error) {
       setError(error.message || 'PDF kon niet worden gemaakt.')
