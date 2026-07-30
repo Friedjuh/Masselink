@@ -9,6 +9,7 @@ create table if not exists public.app_settings (
 create table if not exists public.customers (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
+  workspace_id text not null default 'masselink',
   company_name text not null default '',
   contact_name text not null default '',
   email text not null default '',
@@ -22,10 +23,12 @@ create table if not exists public.customers (
 );
 
 create index if not exists customers_owner_id_idx on public.customers (owner_id);
+create index if not exists customers_workspace_id_idx on public.customers (workspace_id);
 
 create table if not exists public.projects (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
+  workspace_id text not null default 'masselink',
   customer_id text not null references public.customers (id) on delete cascade,
   project_number text not null default '',
   project_name text not null default '',
@@ -34,6 +37,7 @@ create table if not exists public.projects (
 );
 
 create index if not exists projects_owner_id_idx on public.projects (owner_id);
+create index if not exists projects_workspace_id_idx on public.projects (workspace_id);
 create index if not exists projects_customer_id_idx on public.projects (customer_id);
 
 create table if not exists public.invoice_drafts (
@@ -45,6 +49,7 @@ create table if not exists public.invoice_drafts (
 create table if not exists public.invoices (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
+  workspace_id text not null default 'masselink',
   customer_id text references public.customers (id) on delete set null,
   customer_name text not null default '',
   customer_email text not null default '',
@@ -68,8 +73,20 @@ add constraint invoices_status_check
 check (status in ('verzonden', 'betaald'));
 
 create index if not exists invoices_owner_id_idx on public.invoices (owner_id);
-create unique index if not exists invoices_owner_invoice_number_unique
-on public.invoices (owner_id, invoice_number);
+create index if not exists invoices_workspace_id_idx on public.invoices (workspace_id);
+
+alter table public.customers
+add column if not exists workspace_id text not null default 'masselink';
+
+alter table public.projects
+add column if not exists workspace_id text not null default 'masselink';
+
+alter table public.invoices
+add column if not exists workspace_id text not null default 'masselink';
+
+drop index if exists public.invoices_owner_invoice_number_unique;
+create unique index if not exists invoices_workspace_invoice_number_unique
+on public.invoices (workspace_id, invoice_number);
 
 update public.invoices
 set status = 'verzonden'
@@ -147,54 +164,62 @@ for delete
 using (auth.uid() = owner_id);
 
 drop policy if exists customers_select_own on public.customers;
-create policy customers_select_own
+drop policy if exists customers_select_shared on public.customers;
+create policy customers_select_shared
 on public.customers
 for select
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');
 
 drop policy if exists customers_insert_own on public.customers;
-create policy customers_insert_own
+drop policy if exists customers_insert_shared on public.customers;
+create policy customers_insert_shared
 on public.customers
 for insert
-with check (auth.uid() = owner_id);
+with check (auth.role() = 'authenticated');
 
 drop policy if exists customers_update_own on public.customers;
-create policy customers_update_own
+drop policy if exists customers_update_shared on public.customers;
+create policy customers_update_shared
 on public.customers
 for update
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
 
 drop policy if exists customers_delete_own on public.customers;
-create policy customers_delete_own
+drop policy if exists customers_delete_shared on public.customers;
+create policy customers_delete_shared
 on public.customers
 for delete
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');
 
 drop policy if exists projects_select_own on public.projects;
-create policy projects_select_own
+drop policy if exists projects_select_shared on public.projects;
+create policy projects_select_shared
 on public.projects
 for select
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');
 
 drop policy if exists projects_insert_own on public.projects;
-create policy projects_insert_own
+drop policy if exists projects_insert_shared on public.projects;
+create policy projects_insert_shared
 on public.projects
 for insert
-with check (auth.uid() = owner_id);
+with check (auth.role() = 'authenticated');
 
 drop policy if exists projects_update_own on public.projects;
-create policy projects_update_own
+drop policy if exists projects_update_shared on public.projects;
+create policy projects_update_shared
 on public.projects
 for update
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
 
 drop policy if exists projects_delete_own on public.projects;
-create policy projects_delete_own
+drop policy if exists projects_delete_shared on public.projects;
+create policy projects_delete_shared
 on public.projects
 for delete
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');
 
 drop policy if exists invoice_drafts_select_own on public.invoice_drafts;
 create policy invoice_drafts_select_own
@@ -222,26 +247,30 @@ for delete
 using (auth.uid() = owner_id);
 
 drop policy if exists invoices_select_own on public.invoices;
-create policy invoices_select_own
+drop policy if exists invoices_select_shared on public.invoices;
+create policy invoices_select_shared
 on public.invoices
 for select
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');
 
 drop policy if exists invoices_insert_own on public.invoices;
-create policy invoices_insert_own
+drop policy if exists invoices_insert_shared on public.invoices;
+create policy invoices_insert_shared
 on public.invoices
 for insert
-with check (auth.uid() = owner_id);
+with check (auth.role() = 'authenticated');
 
 drop policy if exists invoices_update_own on public.invoices;
-create policy invoices_update_own
+drop policy if exists invoices_update_shared on public.invoices;
+create policy invoices_update_shared
 on public.invoices
 for update
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+using (auth.role() = 'authenticated')
+with check (auth.role() = 'authenticated');
 
 drop policy if exists invoices_delete_own on public.invoices;
-create policy invoices_delete_own
+drop policy if exists invoices_delete_shared on public.invoices;
+create policy invoices_delete_shared
 on public.invoices
 for delete
-using (auth.uid() = owner_id);
+using (auth.role() = 'authenticated');

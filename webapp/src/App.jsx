@@ -23,6 +23,7 @@ const STORAGE_KEYS = {
 }
 
 const DEFAULT_MECHANIC = 'Barry'
+const SHARED_WORKSPACE_ID = 'masselink'
 const TOP_LOGO_SRC = '/pdf-logo-sharp.png'
 const BOTTOM_LOGO_SRC = '/pdf-logo-sharp.png'
 
@@ -640,6 +641,7 @@ function toCustomerPayload(customer, ownerId) {
   return {
     id: customer.id || createId('customer'),
     owner_id: ownerId,
+    workspace_id: SHARED_WORKSPACE_ID,
     company_name: customer.companyName.trim(),
     contact_name: customer.contactName.trim(),
     email: customer.email.trim(),
@@ -655,6 +657,7 @@ function toProjectPayload(project, ownerId) {
   return {
     id: project.id || createId('project'),
     owner_id: ownerId,
+    workspace_id: SHARED_WORKSPACE_ID,
     customer_id: project.customerId,
     project_number: project.projectNumber.trim(),
     project_name: project.projectName.trim(),
@@ -699,6 +702,7 @@ function createInvoiceHistoryPayload(invoice, customer, projects, settings, owne
     payload: {
       id,
       owner_id: ownerId,
+      workspace_id: SHARED_WORKSPACE_ID,
       customer_id: customer?.id || invoice.customerId || null,
       customer_name: customer?.companyName || '',
       customer_email: customer?.email || '',
@@ -762,10 +766,10 @@ function getLegacyDraft(settings) {
 async function fetchRemoteData(userId) {
   const [settingsResult, customersResult, projectsResult, draftResult, invoicesResult] = await Promise.all([
     supabase.from('app_settings').select('settings').eq('owner_id', userId).maybeSingle(),
-    supabase.from('customers').select('*').eq('owner_id', userId).order('company_name'),
-    supabase.from('projects').select('*').eq('owner_id', userId).order('project_number'),
+    supabase.from('customers').select('*').eq('workspace_id', SHARED_WORKSPACE_ID).order('company_name'),
+    supabase.from('projects').select('*').eq('workspace_id', SHARED_WORKSPACE_ID).order('project_number'),
     supabase.from('invoice_drafts').select('draft').eq('owner_id', userId).maybeSingle(),
-    supabase.from('invoices').select('*').eq('owner_id', userId).order('invoice_date', { ascending: false }),
+    supabase.from('invoices').select('*').eq('workspace_id', SHARED_WORKSPACE_ID).order('invoice_date', { ascending: false }),
   ])
 
   if (settingsResult.error) {
@@ -1219,7 +1223,7 @@ function App() {
       const { error } = await supabase
         .from('customers')
         .delete()
-        .eq('owner_id', session.user.id)
+        .eq('workspace_id', SHARED_WORKSPACE_ID)
         .eq('id', customerId)
       if (error) {
         throw error
@@ -1265,7 +1269,7 @@ function App() {
       const { error } = await supabase
         .from('projects')
         .delete()
-        .eq('owner_id', session.user.id)
+        .eq('workspace_id', SHARED_WORKSPACE_ID)
         .eq('id', projectId)
       if (error) {
         throw error
@@ -1291,12 +1295,14 @@ function App() {
   }
 
   function resetInvoiceForm(statusText = 'Nieuwe factuur gestart.') {
+    const resolvedStatusText =
+      typeof statusText === 'string' ? statusText : 'Nieuwe factuur gestart.'
     const nextInvoice = createEmptyInvoice(settings)
     setInvoiceForm(nextInvoice)
     setProjectPickerId('')
     draftSnapshotRef.current = ''
-    if (statusText) {
-      setStatus(statusText)
+    if (resolvedStatusText) {
+      setStatus(resolvedStatusText)
     }
   }
 
@@ -1403,7 +1409,7 @@ function App() {
       const { data, error } = await supabase
         .from('invoices')
         .update({ status: nextStatus })
-        .eq('owner_id', session.user.id)
+        .eq('workspace_id', SHARED_WORKSPACE_ID)
         .eq('id', recordId)
         .select()
         .single()
@@ -1442,7 +1448,7 @@ function App() {
       const { error } = await supabase
         .from('invoices')
         .delete()
-        .eq('owner_id', session.user.id)
+        .eq('workspace_id', SHARED_WORKSPACE_ID)
         .eq('id', recordId)
       if (error) {
         throw error
